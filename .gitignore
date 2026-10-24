@@ -1,0 +1,20 @@
+# dot folders
+.cache/
+.idea/
+.vs/
+.vscode/
+.xmake/
+
+# folders
+build/
+vs*/
+
+# local only: rollback snapshots and reference copies
+_snapshots/
+extern/SKSEMenuFramework/_example/
+
+# files
+*.zip
+*.7z
+*.pdb
+compile_commands.json
