@@ -41,10 +41,11 @@ namespace
 	void LogSettings(const char* a_prefix)
 	{
 		logs::info("{}: enabled={} blockDrain={} chanceSafe={}% separateWild={} chanceWild={}% "
-				   "requireUninterrupted={} notify={} drainWindow={}s verbose={}",
+				   "requireUninterrupted={} notify={} drainWindow={}s verbose={} ostimVisitor={}",
 			a_prefix, Settings::enabled.load(), Settings::blockDrainInfection.load(), Settings::sleepChanceSafe.load(),
 			Settings::wildChanceEnabled.load(), Settings::sleepChanceWild.load(), Settings::requireUninterruptedSleep.load(),
-			Settings::showNotification.load(), Settings::drainWindowSeconds.load(), Settings::verboseLog.load());
+			Settings::showNotification.load(), Settings::drainWindowSeconds.load(), Settings::verboseLog.load(),
+			Settings::ostimVisitorEnabled.load());
 	}
 }
 
@@ -94,6 +95,8 @@ void Settings::Load()
 				drainWindowSeconds = std::clamp(std::stof(value), 0.5f, 60.0f);
 			} else if (key == "bVerboseLog") {
 				verboseLog = ParseBool(value);
+			} else if (key == "bOStimVisitorEnabled") {
+				ostimVisitorEnabled = ParseBool(value);
 			}
 		} catch (const std::exception&) {
 			logs::warn("Bad value for {}: '{}', keeping default", key, value);
@@ -145,13 +148,44 @@ void Settings::Save()
 			<< "fDrainWindowSeconds = " << std::format("{:.1f}", drainWindowSeconds.load()) << "\n"
 			<< "\n"
 			   "; Extra detail in Documents/My Games/Skyrim Special Edition/SKSE/SanguineSlumber.log\n"
-			<< "bVerboseLog = " << Bool(verboseLog) << "\n";
+			<< "bVerboseLog = " << Bool(verboseLog) << "\n"
+			<< "\n"
+			   "[Addons]\n"
+			   "; Sanguine Slumber - OStim Visitor (separate download). Ignored when the add-on is not installed.\n"
+			<< "bOStimVisitorEnabled = " << Bool(ostimVisitorEnabled) << "\n";
 		if (!out) {
 			logs::error("Write to {} failed", kPath.string());
 			return;
 		}
 	}
 	LogSettings("Settings saved");
+}
+
+void Addons::Detect()
+{
+	auto dataHandler = RE::TESDataHandler::GetSingleton();
+	ostimVisitorPresent = dataHandler && dataHandler->LookupModByName(kOStimVisitorPlugin) != nullptr;
+	logs::info("Add-on {}: {}", kOStimVisitorPlugin, ostimVisitorPresent.load() ? "installed" : "not installed");
+}
+
+void Addons::ApplyToggles()
+{
+	if (!ostimVisitorPresent) {
+		return;
+	}
+	// Form values are game state: write them on the main thread (the menu calls this from the render thread).
+	SKSE::GetTaskInterface()->AddTask([]() {
+		auto dataHandler = RE::TESDataHandler::GetSingleton();
+		auto global = dataHandler ? dataHandler->LookupForm<RE::TESGlobal>(kOStimVisitorEnabledGlobal, kOStimVisitorPlugin) : nullptr;
+		if (!global) {
+			logs::warn("Add-on {} is loaded but its enable global {:03X} was not found", kOStimVisitorPlugin, kOStimVisitorEnabledGlobal);
+			return;
+		}
+		global->value = Settings::ostimVisitorEnabled ? 1.0f : 0.0f;
+		if (Settings::verboseLog) {
+			logs::info("OStim visitor add-on {}", Settings::ostimVisitorEnabled.load() ? "enabled" : "disabled");
+		}
+	});
 }
 
 void Settings::ResetToDefaults()
@@ -165,5 +199,6 @@ void Settings::ResetToDefaults()
 	showNotification = true;
 	drainWindowSeconds = 5.0f;
 	verboseLog = true;
+	ostimVisitorEnabled = true;
 	Save();
 }

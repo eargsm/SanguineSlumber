@@ -29,6 +29,7 @@ namespace Settings
 	inline std::atomic<bool>  showNotification{ true };
 	inline std::atomic<float> drainWindowSeconds{ 5.0f };
 	inline std::atomic<bool>  verboseLog{ true };
+	inline std::atomic<bool>  ostimVisitorEnabled{ true };  // add-on toggle; only matters when the add-on is installed
 	inline std::string        notificationText{ "You have contracted Sanguinare Vampiris." };
 
 	void Load();
@@ -52,6 +53,18 @@ namespace Stats
 	inline std::atomic<float> lastChance{ 0.0f };
 	inline std::atomic<bool>  lastRollWild{ false };
 	inline std::atomic<bool>  lastRollInfected{ false };
+}
+
+// Optional add-ons. They listen for the "SanguineSlumber_SleepInfected" mod event (strArg "safe"/"wild"),
+// and each owns a GLOB the core sets from its INI so the add-on can be toggled from the core's menu page.
+namespace Addons
+{
+	inline constexpr std::string_view kOStimVisitorPlugin = "SanguineSlumber_OStimVisitor.esp";
+	inline constexpr RE::FormID       kOStimVisitorEnabledGlobal = 0x800;  // local FormID (ESL range)
+	inline std::atomic<bool>          ostimVisitorPresent{ false };
+
+	void Detect();        // kDataLoaded
+	void ApplyToggles();  // after Detect, on every load, and when the menu changes a toggle
 }
 
 namespace UI

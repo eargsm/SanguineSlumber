@@ -92,11 +92,24 @@ namespace
 		SettingCheckbox("Show notification when infected", Settings::showNotification,
 			"Shows \"You have contracted Sanguinare Vampiris.\" when a sleep roll infects you.");
 
+		if (Addons::ostimVisitorPresent) {
+			ImGuiMCP::SeparatorText("Add-ons");
+			bool v = Settings::ostimVisitorEnabled.load();
+			if (ImGuiMCP::Checkbox("OStim visitor enabled", &v)) {
+				Settings::ostimVisitorEnabled = v;
+				Settings::Save();
+				Addons::ApplyToggles();
+			}
+			HelpMarker("Sanguine Slumber - OStim Visitor: when a sleep roll infects you, a vampire appears\n"
+					   "and offers an OStim scene (Accept / Resist). Off = the add-on does nothing.");
+		}
+
 		ImGuiMCP::EndDisabled();
 
 		ImGuiMCP::Spacing();
 		if (ImGuiMCP::Button("Reset to defaults")) {
 			Settings::ResetToDefaults();
+			Addons::ApplyToggles();
 		}
 		HelpMarker("Enabled, drain blocking on, sleep chance 0.50%, separate wild chance on at 2.00%, notification on.");
 

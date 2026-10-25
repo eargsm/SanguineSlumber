@@ -1,4 +1,4 @@
-Sanguine Slumber 1.0.0
+Sanguine Slumber 1.0.1
 ======================
 
 SKSE plugin for Skyrim (SE 1.5.97 / AE 1.6.x - 1.7.x / VR).
@@ -22,7 +22,7 @@ EXCEPTIONS.txt.
 Source code
 -----------
 The complete source code for this release is available at:
-  https://github.com/eargsm/SanguineSlumber   (tag v1.0.0)
+  https://github.com/eargsm/SanguineSlumber   (tag v1.0.1)
 
 Contents
 --------

@@ -110,35 +110,85 @@ namespace
 		g_grantingFromSleep = false;
 	}
 
-	// Cast, then confirm on the main thread that the effect actually started; retry a few times if not.
-	void InfectFromSleep(int a_attempt)
+	// Tell add-ons (Papyrus: RegisterForModEvent("SanguineSlumber_SleepInfected", ...)) that a sleep roll infected
+	// the player. strArg = "safe" or "wild", numArg = 1.0 for wild, sender = the Sanguinare Vampiris spell.
+	void SendSleepInfectedEvent(bool a_wild)
+	{
+		SKSE::ModCallbackEvent event{ "SanguineSlumber_SleepInfected", a_wild ? "wild" : "safe", a_wild ? 1.0f : 0.0f, g_sanguinare };
+		if (auto source = SKSE::GetModCallbackEventSource()) {
+			source->SendEvent(&event);
+			logs::info("Sent SanguineSlumber_SleepInfected ({})", a_wild ? "wild" : "safe");
+		}
+	}
+
+	// Casting a disease carries the engine's own contraction chance on every cast (vanilla
+	// VampireAbsorbHealthScript: "percent chance exists on the disease"). Measured in game: ~3 successes in
+	// ~20 casts, independent of bed/menu/CommonLib. Our roll already decided the player is infected, so keep
+	// casting until the effect takes: 60 casts x 0.4 s gives > 99.99% at ~15% per cast; failed casts show
+	// nothing. We also wait until the game is unpaused and the player is standing, like vanilla's
+	// VampireDiseaseEffectScript waits for controls before acting.
+	constexpr int   kMaxWaitPolls = 120;  // x 0.5 s = 60 s to get up
+	constexpr int   kMaxCasts = 60;
+	constexpr auto  kPollInterval = std::chrono::milliseconds(500);
+	constexpr auto  kRecastInterval = std::chrono::milliseconds(400);
+
+	bool PlayerIsFree(RE::PlayerCharacter* a_player)
+	{
+		auto ui = RE::UI::GetSingleton();
+		if (ui && ui->GameIsPaused()) {
+			return false;
+		}
+		auto state = a_player->AsActorState();
+		return state && state->GetSitSleepState() == RE::SIT_SLEEP_STATE::kNormal;
+	}
+
+	void ScheduleInfectStep(int a_poll, int a_cast, bool a_wild, std::chrono::milliseconds a_delay);
+
+	// One main-thread step: wait for the player to be free, cast, then confirm the effect started.
+	void InfectStep(int a_poll, int a_cast, bool a_wild)
 	{
 		auto player = RE::PlayerCharacter::GetSingleton();
 		if (!player || !g_sanguinare) {
 			return;
 		}
+		if (a_cast > 0 && IsInfected(player)) {
+			logs::info("Sanguinare Vampiris effect is ACTIVE on the player (cast {}, after {} waits)", a_cast, a_poll);
+			if (Settings::showNotification && !Settings::notificationText.empty()) {
+				RE::SendHUDMessage::ShowHUDMessage(Settings::notificationText.c_str(), nullptr, false);
+			}
+			SendSleepInfectedEvent(a_wild);
+			return;
+		}
+		if (!PlayerIsFree(player)) {
+			if (a_poll >= kMaxWaitPolls) {
+				logs::warn("Player was not free to receive Sanguinare Vampiris within {} s - giving up", kMaxWaitPolls / 2);
+				return;
+			}
+			ScheduleInfectStep(a_poll + 1, a_cast, a_wild, kPollInterval);
+			return;
+		}
+		if (a_cast >= kMaxCasts) {
+			logs::warn("Sanguinare Vampiris effect still not active after {} casts - giving up", a_cast);
+			return;
+		}
+		if (a_cast > 0 && Settings::verboseLog && a_cast % 10 == 0) {
+			logs::info("Sanguinare Vampiris not contracted after {} casts - still trying", a_cast);
+		}
 		CastSanguinareOnPlayer(player);
+		ScheduleInfectStep(a_poll, a_cast + 1, a_wild, kRecastInterval);
+	}
 
-		std::thread([a_attempt]() {
-			std::this_thread::sleep_for(std::chrono::seconds(1));
-			SKSE::GetTaskInterface()->AddTask([a_attempt]() {
-				auto player = RE::PlayerCharacter::GetSingleton();
-				if (!player) {
-					return;
-				}
-				if (IsInfected(player)) {
-					logs::info("Sanguinare Vampiris effect is ACTIVE on the player (attempt {})", a_attempt);
-					if (Settings::showNotification && !Settings::notificationText.empty()) {
-						RE::SendHUDMessage::ShowHUDMessage(Settings::notificationText.c_str(), nullptr, false);
-					}
-				} else if (a_attempt < 5) {
-					logs::info("Sanguinare Vampiris effect not active after attempt {} - retrying", a_attempt);
-					InfectFromSleep(a_attempt + 1);
-				} else {
-					logs::warn("Sanguinare Vampiris effect still not active after {} attempts - giving up", a_attempt);
-				}
-			});
+	void ScheduleInfectStep(int a_poll, int a_cast, bool a_wild, std::chrono::milliseconds a_delay)
+	{
+		std::thread([a_poll, a_cast, a_wild, a_delay]() {
+			std::this_thread::sleep_for(a_delay);
+			SKSE::GetTaskInterface()->AddTask([a_poll, a_cast, a_wild]() { InfectStep(a_poll, a_cast, a_wild); });
 		}).detach();
+	}
+
+	void InfectFromSleep(bool a_wild)
+	{
+		ScheduleInfectStep(0, 0, a_wild, kPollInterval);
 	}
 
 	struct PlayerAddTarget
@@ -238,7 +288,7 @@ namespace
 			Stats::lastRollInfected = infected;
 			if (infected) {
 				++Stats::sleepInfections;
-				InfectFromSleep(1);
+				InfectFromSleep(wild);
 			}
 			return RE::BSEventNotifyControl::kContinue;
 		}
@@ -280,6 +330,9 @@ namespace
 			holder->AddEventSink<RE::TESSleepStopEvent>(SleepHandler::GetSingleton());
 			logs::info("Registered sleep listener");
 		}
+
+		Addons::Detect();
+		Addons::ApplyToggles();
 	}
 }
 
@@ -300,6 +353,11 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
 			break;
 		case SKSE::MessagingInterface::kDataLoaded:
 			OnDataLoaded();
+			break;
+		case SKSE::MessagingInterface::kPostLoadGame:
+		case SKSE::MessagingInterface::kNewGame:
+			// A save restores the add-on globals' saved values; put the INI toggles back on top.
+			Addons::ApplyToggles();
 			break;
 		default:
 			break;
