@@ -30,6 +30,8 @@ namespace Settings
 	inline std::atomic<float> drainWindowSeconds{ 5.0f };
 	inline std::atomic<bool>  verboseLog{ true };
 	inline std::atomic<bool>  ostimVisitorEnabled{ true };  // add-on toggle; only matters when the add-on is installed
+	inline std::atomic<bool>  ostimVisitorAllowMale{ true };
+	inline std::atomic<bool>  ostimVisitorAllowFemale{ true };
 	inline std::string        notificationText{ "You have contracted Sanguinare Vampiris." };
 
 	void Load();
@@ -60,7 +62,9 @@ namespace Stats
 namespace Addons
 {
 	inline constexpr std::string_view kOStimVisitorPlugin = "SanguineSlumber_OStimVisitor.esp";
-	inline constexpr RE::FormID       kOStimVisitorEnabledGlobal = 0x800;  // local FormID (ESL range)
+	inline constexpr RE::FormID       kOStimVisitorEnabledGlobal = 0x800;  // local FormIDs (ESL range)
+	inline constexpr RE::FormID       kOStimVisitorAllowMaleGlobal = 0x804;
+	inline constexpr RE::FormID       kOStimVisitorAllowFemaleGlobal = 0x805;
 	inline std::atomic<bool>          ostimVisitorPresent{ false };
 
 	void Detect();        // kDataLoaded

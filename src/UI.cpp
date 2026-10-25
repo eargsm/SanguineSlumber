@@ -102,6 +102,23 @@ namespace
 			}
 			HelpMarker("Sanguine Slumber - OStim Visitor: when a sleep roll infects you, a vampire appears\n"
 					   "and offers an OStim scene (Accept / Resist). Off = the add-on does nothing.");
+
+			ImGuiMCP::BeginDisabled(!Settings::ostimVisitorEnabled.load());
+			auto genderBox = [](const char* a_label, std::atomic<bool>& a_value) {
+				bool g = a_value.load();
+				ImGuiMCP::Text("   ");
+				ImGuiMCP::SameLine();
+				if (ImGuiMCP::Checkbox(a_label, &g)) {
+					a_value = g;
+					Settings::Save();
+					Addons::ApplyToggles();
+				}
+			};
+			genderBox("Male visitors", Settings::ostimVisitorAllowMale);
+			genderBox("Female visitors", Settings::ostimVisitorAllowFemale);
+			HelpMarker("Which vampires may visit. The visitor is a random vanilla vampire of an allowed gender.\n"
+					   "Both off = no visitor appears (you are still infected).");
+			ImGuiMCP::EndDisabled();
 		}
 
 		ImGuiMCP::EndDisabled();

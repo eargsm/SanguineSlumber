@@ -46,6 +46,9 @@ Re-register after every save load (e.g. from a player alias `OnPlayerLoadGame`).
 
 ## Changelog
 
+- **1.0.2** — Male / Female visitor toggles for the OStim Visitor add-on (menu Add-ons section and
+  `[Addons]` INI keys `bOStimVisitorAllowMale` / `bOStimVisitorAllowFemale`). The Add-ons section only
+  appears when the add-on is installed.
 - **1.0.1** — Sleep infection is now reliable: the engine's per-cast disease chance could make an
   "infected" roll silently fail; the plugin now recasts until the disease takes, after the player is out of
   the bed. New `SanguineSlumber_SleepInfected` mod event for add-ons, and an Add-ons section in the menu.

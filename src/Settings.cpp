@@ -97,6 +97,10 @@ void Settings::Load()
 				verboseLog = ParseBool(value);
 			} else if (key == "bOStimVisitorEnabled") {
 				ostimVisitorEnabled = ParseBool(value);
+			} else if (key == "bOStimVisitorAllowMale") {
+				ostimVisitorAllowMale = ParseBool(value);
+			} else if (key == "bOStimVisitorAllowFemale") {
+				ostimVisitorAllowFemale = ParseBool(value);
 			}
 		} catch (const std::exception&) {
 			logs::warn("Bad value for {}: '{}', keeping default", key, value);
@@ -152,7 +156,10 @@ void Settings::Save()
 			<< "\n"
 			   "[Addons]\n"
 			   "; Sanguine Slumber - OStim Visitor (separate download). Ignored when the add-on is not installed.\n"
-			<< "bOStimVisitorEnabled = " << Bool(ostimVisitorEnabled) << "\n";
+			<< "bOStimVisitorEnabled = " << Bool(ostimVisitorEnabled) << "\n"
+			   "; Which visitors may appear. Both false = no visitor.\n"
+			<< "bOStimVisitorAllowMale = " << Bool(ostimVisitorAllowMale) << "\n"
+			<< "bOStimVisitorAllowFemale = " << Bool(ostimVisitorAllowFemale) << "\n";
 		if (!out) {
 			logs::error("Write to {} failed", kPath.string());
 			return;
@@ -176,14 +183,21 @@ void Addons::ApplyToggles()
 	// Form values are game state: write them on the main thread (the menu calls this from the render thread).
 	SKSE::GetTaskInterface()->AddTask([]() {
 		auto dataHandler = RE::TESDataHandler::GetSingleton();
-		auto global = dataHandler ? dataHandler->LookupForm<RE::TESGlobal>(kOStimVisitorEnabledGlobal, kOStimVisitorPlugin) : nullptr;
-		if (!global) {
-			logs::warn("Add-on {} is loaded but its enable global {:03X} was not found", kOStimVisitorPlugin, kOStimVisitorEnabledGlobal);
-			return;
-		}
-		global->value = Settings::ostimVisitorEnabled ? 1.0f : 0.0f;
+		auto set = [dataHandler](RE::FormID a_id, bool a_value) {
+			auto global = dataHandler ? dataHandler->LookupForm<RE::TESGlobal>(a_id, kOStimVisitorPlugin) : nullptr;
+			if (!global) {
+				// an older add-on version without this global: it keeps its own default
+				logs::warn("Add-on {} has no global {:03X} (older add-on version?)", kOStimVisitorPlugin, a_id);
+				return;
+			}
+			global->value = a_value ? 1.0f : 0.0f;
+		};
+		set(kOStimVisitorEnabledGlobal, Settings::ostimVisitorEnabled);
+		set(kOStimVisitorAllowMaleGlobal, Settings::ostimVisitorAllowMale);
+		set(kOStimVisitorAllowFemaleGlobal, Settings::ostimVisitorAllowFemale);
 		if (Settings::verboseLog) {
-			logs::info("OStim visitor add-on {}", Settings::ostimVisitorEnabled.load() ? "enabled" : "disabled");
+			logs::info("OStim visitor add-on {} (male {}, female {})", Settings::ostimVisitorEnabled.load() ? "enabled" : "disabled",
+				Settings::ostimVisitorAllowMale.load() ? "on" : "off", Settings::ostimVisitorAllowFemale.load() ? "on" : "off");
 		}
 	});
 }
@@ -200,5 +214,7 @@ void Settings::ResetToDefaults()
 	drainWindowSeconds = 5.0f;
 	verboseLog = true;
 	ostimVisitorEnabled = true;
+	ostimVisitorAllowMale = true;
+	ostimVisitorAllowFemale = true;
 	Save();
 }
