@@ -1,3 +1,19 @@
+// Sanguine Slumber - SKSE plugin for Skyrim (SE / AE / VR)
+// Copyright (C) 2026 Rain (eargsm)
+//
+// This program is free software: you can redistribute it and/or modify it under the terms of the
+// GNU General Public License as published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without
+// even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along with this program
+// (LICENSE / LICENSE.txt). If not, see <https://www.gnu.org/licenses/>.
+// Additional permissions apply; see EXCEPTIONS.
+// Source code: https://github.com/eargsm/SanguineSlumber
+
 // Sanguine Slumber
 //  1. Vampiric Drain can no longer infect the player with Sanguinare Vampiris.
 //  2. Instead, every time the player sleeps there is a small chance to contract it.

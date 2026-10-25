@@ -23,6 +23,11 @@ target("SanguineSlumber")
     -- ship the settings file next to the DLL
     add_installfiles("dist/SanguineSlumber.ini", { prefixdir = "SKSE/Plugins" })
 
+    -- GPL-3.0 compliance: full license text, exceptions and README at the root of every package
+    add_installfiles("LICENSE", { filename = "LICENSE.txt" })
+    add_installfiles("EXCEPTIONS", { filename = "EXCEPTIONS.txt" })
+    add_installfiles("dist/README.txt")
+
     -- add src files
     add_files("src/**.cpp")
     add_headerfiles("src/**.h")
