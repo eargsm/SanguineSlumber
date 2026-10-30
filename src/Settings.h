@@ -21,11 +21,14 @@
 namespace Settings
 {
 	inline std::atomic<bool>  enabled{ true };
-	inline std::atomic<bool>  blockDrainInfection{ true };
+	inline std::atomic<bool>  blockDrainInfection{ false };  // off by default: the sleep mechanic is the main feature
 	inline std::atomic<float> sleepChanceSafe{ 0.5f };  // inns, homes, towns (LocTypeDwelling / LocTypeHabitation)
 	inline std::atomic<bool>  wildChanceEnabled{ true };  // false = every sleep uses sleepChanceSafe
 	inline std::atomic<float> sleepChanceWild{ 2.0f };     // camps, caves, ruins, wilderness
 	inline std::atomic<bool>  requireUninterruptedSleep{ false };
+	inline std::atomic<bool>  nightOnly{ true };         // only roll when the sleep starts at night
+	inline std::atomic<float> nightStartHour{ 20.0f };   // 0-24, in-game clock
+	inline std::atomic<float> nightEndHour{ 6.0f };
 	inline std::atomic<bool>  showNotification{ true };
 	inline std::atomic<float> drainWindowSeconds{ 5.0f };
 	inline std::atomic<bool>  verboseLog{ true };
@@ -43,6 +46,14 @@ namespace Settings
 inline float SleepChance(bool a_wild)
 {
 	return a_wild && Settings::wildChanceEnabled ? Settings::sleepChanceWild.load() : Settings::sleepChanceSafe.load();
+}
+
+// Night window may wrap past midnight (20 -> 6).
+inline bool IsNightHour(float a_hour)
+{
+	const float start = Settings::nightStartHour.load();
+	const float end = Settings::nightEndHour.load();
+	return start > end ? (a_hour >= start || a_hour < end) : (a_hour >= start && a_hour < end);
 }
 
 // Session statistics shown on the menu page.

@@ -33,6 +33,17 @@
 
 #include "Settings.h"
 
+namespace RE
+{
+	// CommonLibSSE-NG only forward-declares this one. Layout matches Papyrus
+	// OnSleepStart(float afSleepStartTime, float afDesiredSleepEndTime); we only use it as a signal.
+	struct TESSleepStartEvent
+	{
+		float startTime;  // game days passed
+		float endTime;
+	};
+}
+
 namespace
 {
 	RE::SpellItem*                  g_sanguinare{ nullptr };          // Skyrim.esm:0B8780 DiseaseSanguinareVampiris
@@ -49,6 +60,7 @@ namespace
 	clock::time_point g_lastDrainHit{};
 	bool              g_drainSeen{ false };
 	bool              g_grantingFromSleep{ false };
+	float             g_sleepStartHour{ -1.0f };  // in-game hour (0-24) when the current sleep began, -1 = unknown
 
 	bool IsVampireDrain(const RE::EffectSetting* a_effect, RE::TESObjectREFR* a_caster)
 	{
@@ -232,6 +244,27 @@ namespace
 		}
 	};
 
+	// Remembers the in-game hour the player lay down, for the night-only rule.
+	class SleepStartHandler : public RE::BSTEventSink<RE::TESSleepStartEvent>
+	{
+	public:
+		static SleepStartHandler* GetSingleton()
+		{
+			static SleepStartHandler singleton;
+			return &singleton;
+		}
+
+		RE::BSEventNotifyControl ProcessEvent(const RE::TESSleepStartEvent*, RE::BSTEventSource<RE::TESSleepStartEvent>*) override
+		{
+			const auto calendar = RE::Calendar::GetSingleton();
+			g_sleepStartHour = calendar ? calendar->GetHour() : -1.0f;
+			if (Settings::verboseLog) {
+				logs::info("Sleep started at hour {:.2f}", g_sleepStartHour);
+			}
+			return RE::BSEventNotifyControl::kContinue;
+		}
+	};
+
 	class SleepHandler : public RE::BSTEventSink<RE::TESSleepStopEvent>
 	{
 	public:
@@ -249,6 +282,17 @@ namespace
 			if (a_event->interrupted && Settings::requireUninterruptedSleep) {
 				logs::info("Sleep interrupted - no infection roll");
 				return RE::BSEventNotifyControl::kContinue;
+			}
+			const float startHour = std::exchange(g_sleepStartHour, -1.0f);
+			if (Settings::nightOnly) {
+				if (startHour < 0.0f) {
+					logs::warn("Sleep start hour unknown - no infection roll (night-only is on)");
+					return RE::BSEventNotifyControl::kContinue;
+				}
+				if (!IsNightHour(startHour)) {
+					logs::info("Slept during the day (hour {:.2f}) - no infection roll", startHour);
+					return RE::BSEventNotifyControl::kContinue;
+				}
 			}
 
 			auto player = RE::PlayerCharacter::GetSingleton();
@@ -327,6 +371,7 @@ namespace
 			g_vampireKeyword ? "found" : "MISSING", g_drainEffects.size(), g_safeLocationKeywords.size());
 
 		if (auto holder = RE::ScriptEventSourceHolder::GetSingleton()) {
+			holder->AddEventSink<RE::TESSleepStartEvent>(SleepStartHandler::GetSingleton());
 			holder->AddEventSink<RE::TESSleepStopEvent>(SleepHandler::GetSingleton());
 			logs::info("Registered sleep listener");
 		}

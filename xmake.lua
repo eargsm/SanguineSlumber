@@ -3,7 +3,7 @@ includes("lib/commonlibsse-ng")
 
 -- set project constants
 set_project("SanguineSlumber")
-set_version("1.0.2")
+set_version("1.0.3")
 set_license("GPL-3.0")
 set_languages("c++23")
 set_warnings("allextra")
@@ -17,16 +17,12 @@ target("SanguineSlumber")
     add_rules("commonlibsse-ng.plugin", {
         name = "SanguineSlumber",
         author = "Rain",
-        description = "Vampiric Drain no longer spreads Sanguinare Vampiris; sleeping carries a small chance instead"
+        description = "Sleeping carries a small chance to contract Sanguinare Vampiris; Vampiric Drain blocking is optional"
     })
 
     -- ship the settings file next to the DLL
     add_installfiles("dist/SanguineSlumber.ini", { prefixdir = "SKSE/Plugins" })
-
-    -- GPL-3.0 compliance: full license text, exceptions and README at the root of every package
-    add_installfiles("LICENSE", { filename = "LICENSE.txt" })
-    add_installfiles("EXCEPTIONS", { filename = "EXCEPTIONS.txt" })
-    add_installfiles("dist/README.txt")
+    -- LICENSE / EXCEPTIONS / README stay in the GitHub repo only; release packages carry just the plugin files
 
     -- add src files
     add_files("src/**.cpp")

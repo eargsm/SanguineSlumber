@@ -1,9 +1,9 @@
-Sanguine Slumber 1.0.2
+Sanguine Slumber 1.0.3
 ======================
 
 SKSE plugin for Skyrim (SE 1.5.97 / AE 1.6.x - 1.7.x / VR).
-Vampiric Drain no longer spreads Sanguinare Vampiris. Instead, every sleep carries a small
-chance of waking up infected - higher in the wild than in town.
+Every night's sleep carries a small chance of waking up with Sanguinare Vampiris - higher in
+the wild than in town. Optionally, Vampiric Drain can be stopped from spreading it (off by default).
 
 Copyright (C) 2026 Rain (eargsm)
 

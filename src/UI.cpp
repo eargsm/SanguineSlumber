@@ -61,7 +61,7 @@ namespace
 	void __stdcall Render()
 	{
 		ImGuiMCP::SeparatorText("Sanguine Slumber");
-		ImGuiMCP::TextWrapped("Vampiric Drain no longer spreads Sanguinare Vampiris. Instead, each time you sleep there is a small chance to catch it - higher in the wild than in safe places.");
+		ImGuiMCP::TextWrapped("Each time you sleep at night there is a small chance to wake up with Sanguinare Vampiris - higher in the wild than in safe places. Optionally, vampires' Vampiric Drain can stop spreading it.");
 		ImGuiMCP::Spacing();
 
 		SettingCheckbox("Mod enabled", Settings::enabled,
@@ -70,7 +70,7 @@ namespace
 		ImGuiMCP::BeginDisabled(!Settings::enabled.load());
 
 		SettingCheckbox("Block Vampiric Drain infection", Settings::blockDrainInfection,
-			"Vampires' Vampiric Drain can no longer give you Sanguinare Vampiris.\n"
+			"Off by default. When on, vampires' Vampiric Drain can no longer give you Sanguinare Vampiris.\n"
 			"The Redwater Den bloodspring and quest infections are never blocked.");
 
 		ImGuiMCP::SeparatorText("Sleep infection chance");
@@ -84,6 +84,26 @@ namespace
 			"uses its own chance below. When off, every sleep uses the chance above.");
 		ImGuiMCP::BeginDisabled(!Settings::wildChanceEnabled.load());
 		SettingPercent("Wild sleep chance", Settings::sleepChanceWild, 100.0f, "Default 2.00%.");
+		ImGuiMCP::EndDisabled();
+
+		ImGuiMCP::SeparatorText("Night only");
+		SettingCheckbox("Only roll when sleeping at night", Settings::nightOnly,
+			"When on, only a sleep that starts during the night window can infect you.\n"
+			"Naps during the day are always safe. Default on, 20:00 - 06:00.");
+		ImGuiMCP::BeginDisabled(!Settings::nightOnly.load());
+		auto hourSlider = [](const char* a_label, std::atomic<float>& a_value) {
+			float v = a_value.load();
+			ImGuiMCP::SetNextItemWidth(260.0f);
+			if (ImGuiMCP::SliderFloat(a_label, &v, 0.0f, 24.0f, "%.1f h", ImGuiMCP::ImGuiSliderFlags_AlwaysClamp)) {
+				a_value = v;
+			}
+			if (ImGuiMCP::IsItemDeactivatedAfterEdit()) {
+				Settings::Save();
+			}
+		};
+		hourSlider("Night starts", Settings::nightStartHour);
+		hourSlider("Night ends", Settings::nightEndHour);
+		HelpMarker("In-game clock hour. The window may wrap past midnight (e.g. 20 -> 6).");
 		ImGuiMCP::EndDisabled();
 
 		ImGuiMCP::SeparatorText("Other");
@@ -128,7 +148,7 @@ namespace
 			Settings::ResetToDefaults();
 			Addons::ApplyToggles();
 		}
-		HelpMarker("Enabled, drain blocking on, sleep chance 0.50%, separate wild chance on at 2.00%, notification on.");
+		HelpMarker("Enabled, drain blocking off, sleep chance 0.50%, separate wild chance on at 2.00%, night only (20:00 - 06:00), notification on.");
 
 		ImGuiMCP::SeparatorText("This session");
 		ImGuiMCP::Text("Sleep rolls: %d", Stats::sleepRolls.load());

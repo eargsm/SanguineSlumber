@@ -41,9 +41,10 @@ namespace
 	void LogSettings(const char* a_prefix)
 	{
 		logs::info("{}: enabled={} blockDrain={} chanceSafe={}% separateWild={} chanceWild={}% "
-				   "requireUninterrupted={} notify={} drainWindow={}s verbose={} ostimVisitor={}",
+				   "requireUninterrupted={} nightOnly={} night={}-{} notify={} drainWindow={}s verbose={} ostimVisitor={}",
 			a_prefix, Settings::enabled.load(), Settings::blockDrainInfection.load(), Settings::sleepChanceSafe.load(),
 			Settings::wildChanceEnabled.load(), Settings::sleepChanceWild.load(), Settings::requireUninterruptedSleep.load(),
+			Settings::nightOnly.load(), Settings::nightStartHour.load(), Settings::nightEndHour.load(),
 			Settings::showNotification.load(), Settings::drainWindowSeconds.load(), Settings::verboseLog.load(),
 			Settings::ostimVisitorEnabled.load());
 	}
@@ -87,6 +88,12 @@ void Settings::Load()
 				sleepChanceWild = std::clamp(std::stof(value), 0.0f, 100.0f);
 			} else if (key == "bRequireUninterruptedSleep") {
 				requireUninterruptedSleep = ParseBool(value);
+			} else if (key == "bNightOnly") {
+				nightOnly = ParseBool(value);
+			} else if (key == "fNightStartHour") {
+				nightStartHour = std::clamp(std::stof(value), 0.0f, 24.0f);
+			} else if (key == "fNightEndHour") {
+				nightEndHour = std::clamp(std::stof(value), 0.0f, 24.0f);
 			} else if (key == "bShowNotification") {
 				showNotification = ParseBool(value);
 			} else if (key == "sNotificationText") {
@@ -128,7 +135,7 @@ void Settings::Save()
 			   "; Master switch. false = the mod does nothing (vanilla drain infection, no sleep rolls).\n"
 			<< "bEnabled = " << Bool(enabled) << "\n"
 			<< "\n"
-			   "; true = a vampire's Vampiric Drain can no longer give you Sanguinare Vampiris.\n"
+			   "; true = a vampire's Vampiric Drain can no longer give you Sanguinare Vampiris. Default false\n"
 			<< "bBlockDrainInfection = " << Bool(blockDrainInfection) << "\n"
 			<< "\n"
 			   "; Percent chance (0 - 100) to contract Sanguinare Vampiris each time you sleep. Default 0.5\n"
@@ -142,6 +149,12 @@ void Settings::Save()
 			<< "\n"
 			   "; true = only roll after a full, uninterrupted sleep.\n"
 			<< "bRequireUninterruptedSleep = " << Bool(requireUninterruptedSleep) << "\n"
+			<< "\n"
+			   "; true = only roll when you go to sleep at night, between fNightStartHour and fNightEndHour\n"
+			   "; (in-game clock, 0 - 24; the window may wrap past midnight). Defaults: true, 20, 6\n"
+			<< "bNightOnly = " << Bool(nightOnly) << "\n"
+			<< "fNightStartHour = " << std::format("{:.1f}", nightStartHour.load()) << "\n"
+			<< "fNightEndHour = " << std::format("{:.1f}", nightEndHour.load()) << "\n"
 			<< "\n"
 			   "; Show a message when you catch it from sleeping.\n"
 			<< "bShowNotification = " << Bool(showNotification) << "\n"
@@ -205,11 +218,14 @@ void Addons::ApplyToggles()
 void Settings::ResetToDefaults()
 {
 	enabled = true;
-	blockDrainInfection = true;
+	blockDrainInfection = false;
 	sleepChanceSafe = 0.5f;
 	wildChanceEnabled = true;
 	sleepChanceWild = 2.0f;
 	requireUninterruptedSleep = false;
+	nightOnly = true;
+	nightStartHour = 20.0f;
+	nightEndHour = 6.0f;
 	showNotification = true;
 	drainWindowSeconds = 5.0f;
 	verboseLog = true;
